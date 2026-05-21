@@ -1,0 +1,804 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserVerificationStatuses {
+  VERIFIED
+  PENDING
+  REJECTED
+  UNVERIFIED
+}
+
+enum VisibilityTypes {
+  ORGANIZATION
+  PUBLISHED
+  DRAFT
+}
+
+enum Roles {
+  ADMIN
+  USER
+}
+
+enum PaymentMethod {
+  CARD
+  SBP
+}
+
+enum TransactionType {
+  PURCHASE
+  REFUND
+  GIFT
+  REFERRAL_BONUS
+  SUBSCRIPTION
+  WITHDRAWAL
+}
+
+enum ActionsTypes {
+  VERIFY
+  BAN
+  UNBAN
+  DENY
+}
+
+enum CourseLevels {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  PROFESSIONAL
+}
+
+enum TermTypes {
+  CATEGORY
+  TAG
+}
+
+enum OrganizationRole {
+  OWNER
+  ADMIN
+  MEMBER
+}
+
+enum OrganizationType {
+  PERSONAL
+  COMPANY
+}
+
+enum OrganizationVisibility {
+  PUBLIC
+  PRIVATE
+}
+
+enum NotificationType {
+  FRIEND_REQUEST
+  FRIEND_ACCEPTED
+  COURSE_GIFT
+  ACHIEVEMENT_UNLOCKED
+  STREAK_AT_RISK
+  CERTIFICATE_ISSUED
+  COURSE_UPDATED
+  NEW_COURSE_BY_AUTHOR
+  SUBSCRIPTION_EXPIRING
+  REFERRAL_BONUS
+  WISHLIST_DISCOUNT
+  COURSE_PURCHASED
+  FRIEND_ACTIVITY
+  ORGANIZATION_INVITE
+  ORGANIZATION_REQUEST_APPROVED
+  ORGANIZATION_REQUEST_REJECTED
+  ORGANIZATION_MEMBER_JOINED
+  ASSIGNMENT_REVIEWED
+  REFUND_PROCESSED
+  WITHDRAWAL_PROCESSED
+  PAYMENT_RECEIVED
+}
+
+enum ReportType {
+  COURSE
+  REVIEW
+  USER
+}
+
+enum ReportStatus {
+  PENDING
+  RESOLVED
+  REJECTED
+}
+
+enum AppealStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum WithdrawalStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  REJECTED
+}
+
+enum AchievementCategory {
+  LEARNING
+  SOCIAL
+  DISCIPLINE
+  AUTHOR
+}
+
+enum LessonBlockType {
+  TEXT
+  VIDEO
+  CODE_EDITOR
+  QUIZ
+}
+
+enum MembershipRequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum NotificationDeliveryMethod {
+  IN_APP
+  EMAIL
+  BOTH
+}
+
+model User {
+  id                  Int                      @id @default(autoincrement())
+  login               String
+  email               String                   @unique
+  password            String
+  avatarUrl           String?                  @map("avatar_url")
+  enabledTwoFactor    Boolean                  @default(false)
+  balance             Int                      @default(0)
+  role                Roles                    @default(USER)
+  verificationStatus  UserVerificationStatuses  @default(UNVERIFIED)
+  streakFreezes       Int                      @default(0)
+  experiencePoints    Int                      @default(0) @map("experience_points")
+
+  preferredCategoryIds Int[] @default([]) @map("preferred_category_ids")
+  preferredTagIds      Int[] @default([]) @map("preferred_tag_ids")
+
+  courses               Course[]
+  blockInfos            BlockInfo[]
+  bannedUsers           BlockInfo[]              @relation("BannedByUser")
+  bannedByUsers         BlockInfo[]              @relation("BannedUser")
+  twoVerificationCodes  TwoVerificationCode[]
+  refreshTokens         RefreshToken[]
+  payments              Payment[]
+  transactions          Transaction[]            @relation("UserTransactions")
+  receivedGifts         Transaction[]            @relation("GiftTransactions")
+  organizations         Organization[]
+  organizationMembers   OrganizationMember[]
+  heatmapDatas          HeatmapData[]
+  appeals               Appeal[]
+  adminActions          AdminActions[]
+  userCourseProgresses  UserCourseProgress[]
+  reviews               Review[]
+  purchasedCourses      PurchasedCourse[]
+  reviewVotes           ReviewVote[]
+  certificates          Certificate[]
+  wishlistItems         WishlistItem[]
+  subscriptions        AuthorSubscription[] @relation("Subscriber")
+  subscribers          AuthorSubscription[] @relation("SubscribedAuthor")
+  referrals             Referral[]               @relation("Referrer")
+  referredBy            Referral[]               @relation("Referred")
+  friendRequestsSent    FriendRequest[]          @relation("Requester")
+  friendRequestsReceived FriendRequest[]         @relation("Recipient")
+  friendsOf             Friendship[]             @relation("UserA")
+  friendsWith           Friendship[]             @relation("UserB")
+  notifications         Notification[]
+  notificationSettings  NotificationSettings?
+  reports               Report[]                 @relation("Reporter")
+  reportedIn            Report[]                 @relation("ReportedUser")
+  achievementProgresses AchievementProgress[]
+  streakHistory         StreakHistory[]
+  organizationSubscriptions OrganizationSubscription[]
+  membershipRequests    MembershipRequest[]
+  withdrawals           Withdrawal[]
+  quizAttempts          QuizAttempt[]
+  feedEvents            FeedEvent[]              @relation("FeedEventActor")
+  feedEventsAbout       FeedEvent[]              @relation("FeedEventSubject")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+model Course {
+  id              Int             @id @default(autoincrement())
+  title           String
+  description     String
+  user            User            @relation(fields: [userId], references: [id])
+  userId          Int
+  lessons         Lesson[]
+  isFree          Boolean         @default(true)
+  price           Int?
+  visibility      VisibilityTypes
+  level           CourseLevels
+  refundEnabled   Boolean         @default(false)
+
+  transactions         Transaction[]
+  courseTerms          CourseTerm[]
+  userCourseProgresses UserCourseProgress[]
+  reviews              Review[]
+  organization         Organization?        @relation(fields: [organizationId], references: [id])
+  organizationId       Int?
+  purchasedCourse      PurchasedCourse[]
+  wishlistItems        WishlistItem[]
+  isMandatory          Boolean              @default(false)
+  certificates         Certificate[]
+  reports              Report[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("courses")
+}
+
+model Lesson {
+  id           Int              @id @default(autoincrement())
+  title        String
+  course       Course?          @relation(fields: [courseId], references: [id])
+  courseId     Int?
+  requredTime  Int?
+  order        Int              @default(0)
+  goals        String[]
+  isPreview    Boolean          @default(false)
+  blocks       LessonBlock[]
+
+  userCourseProgresses UserCourseProgress[]
+  quizAttempts         QuizAttempt[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("lessons")
+}
+
+model LessonBlock {
+  id       Int             @id @default(autoincrement())
+  lesson   Lesson          @relation(fields: [lessonId], references: [id])
+  lessonId Int
+  type     LessonBlockType
+  content  Json
+  order    Int             @default(0)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("lesson_blocks")
+}
+
+model BlockInfo {
+  id          Int      @id @default(autoincrement())
+  blockReason String
+  bannedId    Int
+  bannedBy    Int
+  bannedUser   User    @relation("BannedUser", fields: [bannedId], references: [id])
+  bannedByUser User    @relation("BannedByUser", fields: [bannedBy], references: [id])
+  user         User?   @relation(fields: [userId], references: [id])
+  userId       Int?
+  appeal       Appeal?
+  appealId     Int?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("block_info")
+}
+
+model TwoVerificationCode {
+  id     Int     @id @default(autoincrement())
+  user   User    @relation(fields: [userId], references: [id])
+  userId Int
+  code   String
+  isUsed Boolean @default(false)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+}
+
+model RefreshToken {
+  id         Int    @id @default(autoincrement())
+  user       User   @relation(fields: [userId], references: [id])
+  userId     Int
+  tokenValue String
+  expiresAt  DateTime
+  isRevoked  Boolean @default(false)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+}
+
+model Payment {
+  id     Int           @id @default(autoincrement())
+  user   User?         @relation(fields: [userId], references: [id])
+  userId Int?
+  method PaymentMethod
+  count  Int
+  status String        @default("completed")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+}
+
+model Transaction {
+  id       Int            @id @default(autoincrement())
+  user     User           @relation("UserTransactions", fields: [userId], references: [id], onDelete: Cascade)
+  userId   Int
+  course   Course?        @relation(fields: [courseId], references: [id])
+  type     TransactionType
+  price    Int?
+  courseId Int?
+  giftTo    User?         @relation("GiftTransactions", fields: [giftToId], references: [id], onDelete: SetNull)
+  giftToId  Int?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+}
+
+model Organization {
+  id          Int                    @id @default(autoincrement())
+  name        String
+  logo        String?                @default("")
+  description String
+  images      String[]
+  owner       User?                  @relation(fields: [userId], references: [id])
+  userId      Int
+  inviteCode  String                 @unique
+  type        OrganizationType       @default(PERSONAL)
+  visibility  OrganizationVisibility @default(PUBLIC)
+  maxMembers  Int?
+
+  courses                Course[]
+  organizationMembers    OrganizationMember[]
+  organizationSubscriptions OrganizationSubscription[]
+  membershipRequests     MembershipRequest[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("organizations")
+}
+
+model OrganizationMember {
+  id             Int              @id @default(autoincrement())
+  organization   Organization     @relation(fields: [organizationId], references: [id])
+  organizationId Int
+  user           User             @relation(fields: [userId], references: [id])
+  userId         Int
+  role           OrganizationRole @default(MEMBER)
+
+  joinedAt DateTime @default(now())
+
+  @@unique([organizationId, userId])
+  @@map("organization_members")
+}
+
+model OrganizationSubscription {
+  id               Int          @id @default(autoincrement())
+  organization     Organization @relation(fields: [organizationId], references: [id])
+  organizationId   Int
+  user             User         @relation(fields: [userId], references: [id])
+  userId           Int
+  activeUntil      DateTime
+  autoRenew        Boolean      @default(false)
+  licenseCount     Int          @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([organizationId, userId])
+  @@map("organization_subscriptions")
+}
+
+model MembershipRequest {
+  id             Int                     @id @default(autoincrement())
+  organization   Organization            @relation(fields: [organizationId], references: [id])
+  organizationId Int
+  user           User                    @relation(fields: [userId], references: [id])
+  userId         Int
+  status         MembershipRequestStatus @default(PENDING)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([organizationId, userId])
+  @@map("membership_requests")
+}
+
+model HeatmapData {
+  id           Int      @id @default(autoincrement())
+  user         User     @relation(fields: [userId], references: [id])
+  userId       Int
+  date         DateTime
+  actionsCount Int      @default(0)
+
+  @@unique([userId, date])
+  @@index([userId, date])
+}
+
+model Term {
+  id          Int         @id @default(autoincrement())
+  type        TermTypes
+  name        String      @unique
+  courseTerms CourseTerm[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+}
+
+model CourseTerm {
+  term     Term   @relation(fields: [termId], references: [id])
+  course   Course @relation(fields: [courseId], references: [id])
+  termId   Int
+  courseId Int
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@id([termId, courseId])
+}
+
+model Appeal {
+  id       Int          @id @default(autoincrement())
+  user     User?        @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId   Int?
+  text     String
+  status   AppealStatus @default(PENDING)
+  banInfo  BlockInfo?   @relation(fields: [banInfoId], references: [id])
+  banInfoId Int?        @unique
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+}
+
+model AdminActions {
+  id           Int          @id @default(autoincrement())
+  admin        User         @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId       Int
+  targetUserId Int
+  actionType   ActionsTypes
+  reason       String?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("admin_actions")
+}
+
+model UserCourseProgress {
+  id                    Int       @id @default(autoincrement())
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course                Course    @relation(fields: [courseId], references: [id])
+  currentLesson         Lesson?   @relation(fields: [currentLessonId], references: [id])
+  snapshotLessonIds     Int[]
+  progress              Float     @default(0)
+  totalLessons          Int       @default(0)
+  completedLessonsCount Int       @default(0)
+  startedAt             DateTime  @default(now())
+  lastActivityAt        DateTime  @default(now())
+  completedAt           DateTime?
+  isUpdated             Boolean   @default(false)
+  quizResults           Json?
+
+  userId          Int
+  currentLessonId Int?
+  courseId        Int
+
+  @@unique([userId, courseId])
+  @@map("user_course_progress")
+}
+
+model Review {
+  id        Int      @id @default(autoincrement())
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  course    Course?  @relation(fields: [courseId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  text      String
+  rating    Int
+  userId    Int?
+  courseId  Int?
+  votes     ReviewVote[]
+  reports Report[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+}
+
+model ReviewVote {
+  id       Int    @id @default(autoincrement())
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId   Int
+  review   Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  reviewId Int
+  vote     String
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, reviewId])
+  @@map("review_votes")
+}
+
+model PurchasedCourse {
+  user        User     @relation(fields: [userId], references: [id])
+  userId      Int
+  course      Course   @relation(fields: [courseId], references: [id])
+  courseId    Int
+  purchasedAt DateTime @default(now())
+
+  @@id([userId, courseId])
+}
+
+model Certificate {
+  id         Int      @id @default(autoincrement())
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     Int
+  course     Course   @relation(fields: [courseId], references: [id])
+  courseId   Int
+  uuid       String   @unique
+  fileUrl    String?  @map("file_url")
+  issuedAt   DateTime @default(now())
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, courseId])
+  @@map("certificates")
+}
+
+model WishlistItem {
+  id       Int      @id @default(autoincrement())
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId   Int
+  course   Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId Int
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, courseId])
+  @@map("wishlist_items")
+}
+
+model AuthorSubscription {
+  id          Int      @id @default(autoincrement())
+  user        User     @relation("Subscriber", fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int
+  author      User     @relation("SubscribedAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  authorId    Int
+  activeUntil DateTime
+  autoRenew   Boolean  @default(false)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, authorId])
+  @@map("author_subscriptions")
+}
+
+model Referral {
+  id         Int      @id @default(autoincrement())
+  referrer   User     @relation("Referrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  referrerId Int
+  referred   User     @relation("Referred", fields: [referredId], references: [id], onDelete: Cascade)
+  referredId Int      @unique
+  bonusPaid  Boolean  @default(false)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("referrals")
+}
+
+model FriendRequest {
+  id          Int      @id @default(autoincrement())
+  requester   User     @relation("Requester", fields: [requesterId], references: [id], onDelete: Cascade)
+  requesterId Int
+  recipient   User     @relation("Recipient", fields: [recipientId], references: [id], onDelete: Cascade)
+  recipientId Int
+  status      String   @default("pending")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([requesterId, recipientId])
+  @@map("friend_requests")
+}
+
+model Friendship {
+  id       Int      @id @default(autoincrement())
+  userA    User     @relation("UserA", fields: [userAId], references: [id], onDelete: Cascade)
+  userAId  Int
+  userB    User     @relation("UserB", fields: [userBId], references: [id], onDelete: Cascade)
+  userBId  Int
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userAId, userBId])
+  @@map("friendships")
+}
+
+model Achievement {
+  id          Int                @id @default(autoincrement())
+  name        String
+  description String
+  iconUrl     String?            @map("icon_url")
+  category    AchievementCategory
+  condition   Json
+  xpReward    Int                @default(0) @map("xp_reward")
+
+  progresses AchievementProgress[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("achievements")
+}
+
+model AchievementProgress {
+  id            Int         @id @default(autoincrement())
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        Int
+  achievement   Achievement @relation(fields: [achievementId], references: [id])
+  achievementId Int
+  progress      Float       @default(0)
+  isUnlocked    Boolean     @default(false)
+  unlockedAt    DateTime?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([userId, achievementId])
+  @@map("achievement_progress")
+}
+
+model LeaderboardSnapshot {
+  id        Int      @id @default(autoincrement())
+  type      String
+  period    String
+  data      Json
+  computedAt DateTime @default(now())
+
+  @@index([type, period])
+  @@map("leaderboard_snapshots")
+}
+
+model StreakHistory {
+  id       Int      @id @default(autoincrement())
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId   Int
+  date     DateTime
+  actionCount Int   @default(1)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, date])
+  @@map("streak_history")
+}
+
+model Notification {
+  id          Int              @id @default(autoincrement())
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      Int
+  type        NotificationType
+  title       String
+  body        String
+  data        Json?
+  isRead      Boolean          @default(false)
+  deliveryMethod NotificationDeliveryMethod @default(IN_APP)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("notifications")
+}
+
+model NotificationSettings {
+  id            Int     @id @default(autoincrement())
+  user          User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        Int     @unique
+  friendRequest Boolean @default(true)
+  achievement   Boolean @default(true)
+  streak        Boolean @default(true)
+  certificate   Boolean @default(true)
+  courseUpdate  Boolean @default(true)
+  subscription  Boolean @default(true)
+  referral      Boolean @default(true)
+  gift          Boolean @default(true)
+  wishlist      Boolean @default(true)
+  organization  Boolean @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("notification_settings")
+}
+
+model Report {
+  id         Int          @id @default(autoincrement())
+  reporter   User         @relation("Reporter", fields: [reporterId], references: [id], onDelete: Cascade)
+  reporterId Int
+  type       ReportType
+  course     Course?      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId   Int?
+  review     Review?      @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  reviewId   Int?
+  reportedUser User?      @relation("ReportedUser", fields: [reportedUserId], references: [id], onDelete: Cascade)
+  reportedUserId Int?
+  reason     String
+  status     ReportStatus @default(PENDING)
+  resolvedBy Int?
+  resolvedAt DateTime?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("reports")
+}
+
+model Withdrawal {
+  id        Int              @id @default(autoincrement())
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    Int
+  amount    Int
+  method    PaymentMethod
+  account   String
+  status    WithdrawalStatus @default(PENDING)
+  processedBy Int?
+  processedAt DateTime?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("withdrawals")
+}
+
+model QuizAttempt {
+  id       Int      @id @default(autoincrement())
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId   Int
+  lesson   Lesson   @relation(fields: [lessonId], references: [id])
+  lessonId Int
+  score    Int
+  maxScore Int      @map("max_score")
+  answers  Json
+  passed   Boolean
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("quiz_attempts")
+}
+
+model FeedEvent {
+  id        Int      @id @default(autoincrement())
+  actor     User     @relation("FeedEventActor", fields: [actorId], references: [id], onDelete: Cascade)
+  actorId   Int
+  subject   User     @relation("FeedEventSubject", fields: [subjectId], references: [id])
+  subjectId Int
+  type      String
+  data      Json?
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("feed_events")
+}
+
+model BlacklistedToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  expiresAt DateTime
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("blacklisted_tokens")
+}
+
