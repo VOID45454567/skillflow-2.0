@@ -1,76 +1,77 @@
 export interface AppConfiguration {
-    nodeEnv: string,
-    host: string,
-    port: number,
-    databaseUrl: string,
+    nodeEnv: string;
+    port: number;
+    databaseUrl: string;
+    host: string;
+
     jwt: {
-        accessSecret: string,
-        accessExpires: string,
-        refreshSecret: string,
-        refreshExpires: string,
-    }
+        accessSecret: string;
+        accessExpiresIn: string;
+        refreshSecret: string;
+        refreshExpiresIn: string;
+    };
+
     redis: {
-        host: string,
-        port: number,
-        password: string
-    }
+        host: string;
+        port: number;
+        password: string;
+    };
 
     minio: {
-        host: string,
-        port: number,
-        accessKey: string,
-        secretKey: string,
-        useSsl: boolean,
-        bucketName: string
-    }
+        endpoint: string;
+        port: number;
+        accessKey: string;
+        secretKey: string;
+        useSsl: boolean;
+        bucket: string;
+    };
 
     mail: {
-        host: string,
-        port: number,
-        provider: string,
-        user: string,
-        pass: string,
-        from: string
-        smtp: string
-    }
+        host: string;
+        port: number;
+        user: string;
+        password: string;
+        from: string;
+        provider: string;
+        smtp: string;
+    };
 
     certificate: {
-        templatePath: string,
-
-    }
+        templatePath: string;
+    };
 
     emailTemplates: {
-        path: string
-    }
+        path: string;
+    };
 
     twoFactor: {
-        appName: string,
-        codeLength: number,
-        codeTtl: number
-    }
+        appName: string;
+        codeLength: number;
+        codeTtl: number;
+    };
 
     passwordReset: {
-        tokenTtl: number
-    }
+        tokenTtl: number;
+    };
 
     emailVerification: {
-        tokenTtl: number
-    }
+        tokenTtl: number;
+    };
 
     streak: {
-        freezeCost: number
-    }
-
-    referral: {
-        bonusPersent: number
-    }
+        freezeCost: number;
+    };
 
     security: {
-        maxLoginAttempts: number,
-        loginBlockTime: number
-    }
+        maxLoginAttempts: number;
+        loginBlockTime: number;
+    };
 
     puppeteer: {
-        executablePath: string
-    }
+        executablePath: string;
+    };
+
+    referral: {
+        bonusPercent: number;
+    };
 }

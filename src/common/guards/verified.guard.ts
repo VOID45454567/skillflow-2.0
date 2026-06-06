@@ -1,8 +1,9 @@
-import { CanActivate, ExecutionContext, ForbiddenException } from "@nestjs/common";
+import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
-import { UserVerificationStatuses } from "../../generated/prisma/enums";
+import { UserVerificationStatuses } from "@prisma/client";
 import { REQUIRE_VERIFICATION_KEY } from "../decorators/virified.decorator";
 
+@Injectable()
 export class VerifiedGuard implements CanActivate {
     constructor(private reflector: Reflector) { }
 

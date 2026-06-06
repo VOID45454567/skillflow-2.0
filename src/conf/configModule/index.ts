@@ -4,5 +4,5 @@ import { configuration } from '../app.config'
 export const configModuleOptions: ConfigModuleOptions = {
     isGlobal: true,
     envFilePath: '.env',
-    load: [configuration]
+    load: [configuration],
 }

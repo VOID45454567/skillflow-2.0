@@ -30,6 +30,9 @@ import { RedisService } from './redis.service';
                 },
             }),
         }),
+        BullModule.registerQueue({
+            name: 'default'
+        })
     ],
     providers: [RedisService],
     exports: [CacheModule, BullModule, RedisService],
